@@ -1,6 +1,4 @@
-﻿#include <stdio.h>
-
-//bool input[8] = {true,true,true,true,true,true,true,true};
+#include <stdio.h>
 
 bool trmin[9];
 bool output[10];
@@ -49,10 +47,8 @@ void xorp(bool * input) {
 
 int main()
 {
-
     bool input[8] = { 0,  0,  0,  0,  0,  0,  0,  0 };
     //                1   2   4   8  16  32  64 128
-
 
     int i;
     int m;
@@ -84,7 +80,6 @@ int main()
             else {
                 xorp(input);
             }
-            //printf("%d %d %d %d %d %d %d %d %d : ", trmin[8], trmin[7], trmin[6], trmin[5], trmin[4], trmin[3], trmin[2], trmin[1], trmin[0]);
 
             if (cnt_bfr == 0 || num_1(trmin, 8) == 4) {
                 output[9] = ~trmin[8];
@@ -112,14 +107,10 @@ int main()
                 }
             }
 
-            //printf("%d %d %d %d %d %d %d %d %d %d : ", output[9], output[8], output[7], output[6], output[5], output[4], output[3], output[2], output[1], output[0]);
-            //printf("%d : ",output[9]+ output[8] + output[7] + output[6] + output[5] + output[4] + output[3] + output[2] + output[1] + output[0]);
             for (i = 0; i < 10; i++) {
                 n = n + (output[i] << i);
             }
             sam = sam + output[9] + output[8] + output[7] + output[6] + output[5] + output[4] + output[3] + output[2] + output[1] + output[0];
-            //printf("%d cnt = ", n);
-            //printf("%d\n", cnt_now);
 
             cnt_bfr = cnt_now;
             cnt_now = 0;
