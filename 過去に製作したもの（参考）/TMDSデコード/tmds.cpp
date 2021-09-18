@@ -1,3 +1,4 @@
+//TMDS 8bit->10bit encode
 #include <stdio.h>
 
 bool trmin[9];
