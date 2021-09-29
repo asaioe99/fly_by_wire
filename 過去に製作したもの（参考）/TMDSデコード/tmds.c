@@ -29,7 +29,7 @@ void xnorp(bool *input)
     trmin[8] = false;
     for (i = 1; i < 8; i++)
     {
-        trmin[i] = !(trmin[i - 1] ^ input[i]);
+        trmin[i] = !(!trmin[i - 1] != !input[i]);
     }
 }
 
@@ -62,7 +62,7 @@ void xorp(bool *input)
     trmin[8] = true;
     for (i = 1; i < 8; i++)
     {
-        trmin[i] = trmin[i - 1] ^ input[i];
+        trmin[i] = !trmin[i - 1] != !input[i];
     }
 }
 
