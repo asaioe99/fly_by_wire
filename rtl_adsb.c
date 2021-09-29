@@ -57,10 +57,10 @@
 
 #define ADSB_RATE			2000000
 #define ADSB_FREQ			297030000
-#define DEFAULT_ASYNC_BUF_NUMBER	12
+#define DEFAULT_ASYNC_BUF_NUMBER	16//12
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define AUTO_GAIN			-100
-//不要
+
 #define MESSAGEGO    253
 #define OVERWRITE    254
 #define BADSAMPLE    255
@@ -234,79 +234,90 @@ static inline int preamble(uint16_t *buf, int i)
 	for (i2=0; i2<preamble_len; i2++) {
 		switch (i2) {
 			case 0://line 0
+			//case 1:
 			case 5:
                         case 10:
 			case 15:
 			case 20:
 			case 25:
 			case 60://line 2
+			//case 61:
 			case 65:
 			case 70:
 			case 75:
 			case 80:
 			case 85:
 			case 119://line 4
+			//case 120:
 			case 124:
 			case 129:
 			case 134:
 			case 139:
 			case 144:
 			case 178://line 6
+			//case 179:
 			case 183:
 			case 188:
 			case 193:
 			case 198:
 			case 203:
 			case 238://line 8
+			//case 239:
 			case 243:
 			case 248:
 			case 253:
 			case 258:
 			case 262:
 				if (buf[i+i2] < p_high) {
-					high2 = p_high;
 					high3 = high2;
+					high2 = p_high;
 					p_high = buf[i+i2];
+					//printf("%d,",high3);
 				}
 				break;
 			case 30://line 1
+			//case 31:
 			case 35:
 			case 40:
 			case 45:
 			case 50:
 			case 55:
 			case 89://line 3
+			//case 90:
 			case 94:
 			case 99:
 			case 104:
 			case 109:
 			case 114:
 			case 149://line 5
+			//case 150:
 			case 154:
 			case 159:
 			case 164:
 			case 169:
 			case 174:
 			case 208://line 7
+			//case 209:
 			case 213:
 			case 218:
 			case 223:
 			case 228:
 			case 233:
 				if (buf[i+i2] > p_low) {
-					low2 = p_low;
 					low3 = low2;
+					low2 = p_low;
 					p_low = buf[i+i2];
 				}
 				break;
 			default:
 				break;
 		}
-		if (high2 < low2) {
-			return 0;}
+		if (p_high < p_low) {
+			return 0;
+		}
 	}
-	p_high = high2;
-	p_low  = low2;
+	p_high = high3;
+	p_low  = low3;
 	printf("detect preamble at i=%d %d:%d ",i,p_high,p_low);
 	return 1;
 }
@@ -316,7 +327,7 @@ int manchester(uint16_t *buf, int len)
 {
 	/* a and b hold old values to verify local manchester */
 	int i, i2, i3;
-	int end;
+	int end = 1;//temp
 	int ave;
 	int maximum_i = len - 1;        // len-1 since we look at i and i+1
 	// todo, allow wrap across buffers
@@ -327,25 +338,24 @@ int manchester(uint16_t *buf, int len)
 		for ( ; i < (len - preamble_len); i++) {
 			if (!preamble(buf, i)) {
 				continue;}
-			//p_high = 250;
-			//p_low  = 250;
-			for (i=0; i<(len - preamble_len); i++) {
-				//buf[i+i2] = MESSAGEGO;}
+			for ( ; i<(len - preamble_len); i++) {
 				if (dec_p[i].f == 1) {
 					for (i2=23;i2<28;i2++) {
-						if (dec_p[i+i2].f==0) {end = i2;}
+						if (dec_p[i+i2].f==0) {
+							end = i2;
+						}
 					}
 					for (i2=0;i2<=end;i2++) {
 						ave = ave + buf[i+i2];
 					}
 					ave = ave / end;
-					binary[i3] = (ave > ((p_high >> 1) + (p_low >> 1))) ? 1 : 0;
 					i = i + end;
-					if (i3 < 1125) {printf("%2d,",binary[i3]);}
-					i3++;
+					if (i3 < 1125) {
+						binary[i3] = (ave > ((p_high >> 1) + (p_low >> 1))) ? 1 : 0;
+						printf("%2d,",binary[i3]);
+						i3++;
+					}
 				}
-			//i += preamble_len;
-			//break;
 			}
 		}
 		/* mark bits until encoding breaks */
