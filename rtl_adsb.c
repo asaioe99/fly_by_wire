@@ -76,7 +76,7 @@ uint16_t squares[256];
 /* todo, bundle these up in a struct */
 uint8_t *buffer;  /* also abused for uint16_t */
 uint8_t binary[1125];
-uint16_t p_high, p_low;
+int32_t p_high, p_low;
 int verbose_output = 0;
 int short_output = 0;
 int quality = 10;
@@ -88,7 +88,7 @@ struct decode_place
 	int            f; //in c90 can not use bool
 	uint16_t  h_line;
 };
-struct decode_place dec_p[32000];
+struct decode_place dec_p[33333];
 #define preamble_len	263
 /* signals are not threadsafe by default */
 #define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
@@ -166,14 +166,14 @@ void squares_precompute(void)
 void set_dec_p()
 {
 	int i;
-	int i2;
-	for (i=0;i<32000;i++) {
-		if ((i2 % 2200) <1919 ) {
+	int i2 = 0;
+	for (i=0;i<33333;i++) {
+		if ((i2 % 2200) < 1920 ) {
 			dec_p[i].f = 1;
 		} else {
 			dec_p[i].f = 0;
 		}
-		dec_p[i].h_line = i2 % 2200;
+		dec_p[i].h_line = i2 / 2200;
 		i2 = i2 +74;
 		//i2 = i2 % 2200;
 		if (i % 4 == 3) { i2++; }
@@ -189,7 +189,7 @@ int magnitute(uint8_t *buf, int len)
 	for (i=0; i<len; i+=2) {
 		m = (uint16_t*)(&buf[i]);
 		*m = squares[buf[i]] + squares[buf[i+1]];
-		//printf("%5d, ",*m);
+		printf("%5d, ",*m);
 	}
 	return len/2;
 }
@@ -224,101 +224,37 @@ static inline uint16_t max16(uint16_t a, uint16_t b)
 static inline int preamble(uint16_t *buf, int i)
 /* returns 0/1 for preamble at index i */
 {
-	int i2;
-	p_high = 65535;
-	uint16_t high2 = 65535;
-	uint16_t high3 = 65535;
+	int i2, i3;
+	p_high = 0;
 	p_low  = 0;
-	uint16_t low2 = 0;
-	uint16_t low3 = 0;
-	for (i2=0; i2<preamble_len; i2++) {
-		switch (i2) {
-			case 0://line 0
-			//case 1:
-			case 5:
-                        case 10:
-			case 15:
-			case 20:
-			case 25:
-			case 60://line 2
-			//case 61:
-			case 65:
-			case 70:
-			case 75:
-			case 80:
-			case 85:
-			case 119://line 4
-			//case 120:
-			case 124:
-			case 129:
-			case 134:
-			case 139:
-			case 144:
-			case 178://line 6
-			//case 179:
-			case 183:
-			case 188:
-			case 193:
-			case 198:
-			case 203:
-			case 238://line 8
-			//case 239:
-			case 243:
-			case 248:
-			case 253:
-			case 258:
-			case 262:
-				if (buf[i+i2] < p_high) {
-					high3 = high2;
-					high2 = p_high;
-					p_high = buf[i+i2];
-					//printf("%d,",high3);
-				}
-				break;
-			case 30://line 1
-			//case 31:
-			case 35:
-			case 40:
-			case 45:
-			case 50:
-			case 55:
-			case 89://line 3
-			//case 90:
-			case 94:
-			case 99:
-			case 104:
-			case 109:
-			case 114:
-			case 149://line 5
-			//case 150:
-			case 154:
-			case 159:
-			case 164:
-			case 169:
-			case 174:
-			case 208://line 7
-			//case 209:
-			case 213:
-			case 218:
-			case 223:
-			case 228:
-			case 233:
-				if (buf[i+i2] > p_low) {
-					low3 = low2;
-					low2 = p_low;
-					p_low = buf[i+i2];
-				}
-				break;
-			default:
-				break;
+	int32_t cor_h[5] = {0, 0, 0, 0, 0};
+	int32_t cor_l[5] = {0, 0, 0, 0, 0};
+
+	//not best, improve it someday
+	for (i3=-2;i3<3;i3++) {
+		for (i2=0; i2<26; i2++) {
+			cor_h[i3+2] += (int32_t)buf[i+i2+i3];
+			cor_l[i3+2] += (int32_t)buf[i+i2+i3+30];
+			cor_h[i3+2] += (int32_t)buf[i+i2+i3+60];
+			cor_l[i3+2] += (int32_t)buf[i+i2+i3+89];
+			cor_h[i3+2] += (int32_t)buf[i+i2+i3+119];
+			cor_l[i3+2] += (int32_t)buf[i+i2+i3+149];
+			cor_h[i3+2] += (int32_t)buf[i+i2+i3+178];
+			cor_l[i3+2] += (int32_t)buf[i+i2+i3+208];
+			cor_h[i3+2] += (int32_t)buf[i+i2+i3+238];
 		}
-		if (p_high < p_low) {
-			return 0;
-		}
+		cor_h[i3+2] = cor_h[i3+2] - buf[i+25+238];
+		printf("%d\n",cor_h[0]-cor_l[0]);
+		if (i3==-1 && (cor_h[0]-cor_l[0])>(cor_h[1]-cor_l[1])) {return 0;}
+		if (i3==0  && (cor_h[1]-cor_l[1])>(cor_h[2]-cor_l[2])) {return 0;}
+		if (i3==1  && (cor_h[2]-cor_l[2])<(cor_h[3]-cor_l[3])) {return 0;}
+		if (i3==2  && (cor_h[3]-cor_l[3])<(cor_h[4]-cor_l[4])) {return 0;}
 	}
-	p_high = high3;
-	p_low  = low3;
-	printf("detect preamble at i=%d %d:%d ",i,p_high,p_low);
+
+	p_high = cor_h[2] / 233;
+	p_low = cor_l[2] / 233;
+	printf("\ncor_h=%d cor_l=%d h+l=%d\n",cor_h[2],cor_l[2],cor_h[2]-cor_l[2]);
+	printf("detect preamble at i=%d %d:%d\n",i,p_high,p_low);
 	return 1;
 }
 
@@ -326,35 +262,45 @@ int manchester(uint16_t *buf, int len)
 /* overwrites magnitude buffer with valid bits (BADSAMPLE on errors) */
 {
 	/* a and b hold old values to verify local manchester */
-	int i, i2, i3;
+	int i, i2, i3, i4, line;
 	int end = 1;//temp
+	int n_begin = 1;
 	int ave;
 	int maximum_i = len - 1;        // len-1 since we look at i and i+1
 	// todo, allow wrap across buffers
-	i = 0;
-	i3 = 0;
+	i = 2;
 	while (i < maximum_i) {
 		/* find preamble */
 		for ( ; i < (len - preamble_len); i++) {
 			if (!preamble(buf, i)) {
 				continue;}
-			for ( ; i<(len - preamble_len); i++) {
+			i3 = 0;
+			for ( ; i<(len - preamble_len); ) {
 				if (dec_p[i].f == 1) {
 					for (i2=23;i2<28;i2++) {
 						if (dec_p[i+i2].f==0) {
 							end = i2;
+							for(i4=2;i4<6;i4++) {
+								if (dec_p[i+i2+i4].f==1) {
+									end = end + i4;
+								}
+							}
 						}
 					}
-					for (i2=0;i2<=end;i2++) {
+					ave = 0;
+					for (i2=0;i2<end;i2++) {
 						ave = ave + buf[i+i2];
 					}
 					ave = ave / end;
 					i = i + end;
+					line = (p_high >> 1) + (p_low >> 1);
 					if (i3 < 1125) {
-						binary[i3] = (ave > ((p_high >> 1) + (p_low >> 1))) ? 1 : 0;
-						printf("%2d,",binary[i3]);
+						binary[i3] = ave > line ? 1 : 0;
+						printf("%4d %d,",i3,binary[i3]);
 						i3++;
 					}
+				} else {
+					i++;
 				}
 			}
 		}
