@@ -56,8 +56,8 @@
 #endif
 
 #define ADSB_RATE			2000000
-#define ADSB_FREQ			297030000
-#define DEFAULT_ASYNC_BUF_NUMBER	16//12
+#define ADSB_FREQ			296930000
+#define DEFAULT_ASYNC_BUF_NUMBER	12
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define AUTO_GAIN			-100
 
@@ -76,7 +76,7 @@ uint16_t squares[256];
 /* todo, bundle these up in a struct */
 uint8_t *buffer;  /* also abused for uint16_t */
 uint8_t binary[1125];
-int32_t p_high, p_low;
+uint16_t p_high, p_low;
 int verbose_output = 0;
 int short_output = 0;
 int quality = 10;
@@ -189,7 +189,7 @@ int magnitute(uint8_t *buf, int len)
 	for (i=0; i<len; i+=2) {
 		m = (uint16_t*)(&buf[i]);
 		*m = squares[buf[i]] + squares[buf[i+1]];
-		printf("%5d, ",*m);
+		//printf("%5d, ",*m);
 	}
 	return len/2;
 }
@@ -227,33 +227,78 @@ static inline int preamble(uint16_t *buf, int i)
 	int i2, i3;
 	p_high = 0;
 	p_low  = 0;
-	int32_t cor_h[5] = {0, 0, 0, 0, 0};
-	int32_t cor_l[5] = {0, 0, 0, 0, 0};
+	int32_t cor_n[5]  = {0,0,0,0,0};
+	int32_t cor_hs[5] = {0,0,0,0,0};
+	int32_t cor_ls[5] = {0,0,0,0,0};
+	int32_t cor_h[5][5] = {
+				{0,0,0,0,0},
+				{0,0,0,0,0},
+				{0,0,0,0,0},
+				{0,0,0,0,0},
+				{0,0,0,0,0}
+				};
+	int32_t cor_l[5][4] = {
+				{0,0,0,0,0},
+				{0,0,0,0,0},
+				{0,0,0,0,0},
+				{0,0,0,0,0}
+				};
 
 	//not best, improve it someday
 	for (i3=-2;i3<3;i3++) {
 		for (i2=0; i2<26; i2++) {
-			cor_h[i3+2] += (int32_t)buf[i+i2+i3];
-			cor_l[i3+2] += (int32_t)buf[i+i2+i3+30];
-			cor_h[i3+2] += (int32_t)buf[i+i2+i3+60];
-			cor_l[i3+2] += (int32_t)buf[i+i2+i3+89];
-			cor_h[i3+2] += (int32_t)buf[i+i2+i3+119];
-			cor_l[i3+2] += (int32_t)buf[i+i2+i3+149];
-			cor_h[i3+2] += (int32_t)buf[i+i2+i3+178];
-			cor_l[i3+2] += (int32_t)buf[i+i2+i3+208];
-			cor_h[i3+2] += (int32_t)buf[i+i2+i3+238];
+			cor_h[i3+2][0] += (int32_t)buf[i+i2+i3];
+			cor_l[i3+2][0] += (int32_t)buf[i+i2+i3+30];
+			cor_h[i3+2][1] += (int32_t)buf[i+i2+i3+60];
+			cor_l[i3+2][1] += (int32_t)buf[i+i2+i3+89];
+			cor_h[i3+2][2] += (int32_t)buf[i+i2+i3+119];
+			cor_l[i3+2][2] += (int32_t)buf[i+i2+i3+149];
+			cor_h[i3+2][3] += (int32_t)buf[i+i2+i3+178];
+			cor_l[i3+2][3] += (int32_t)buf[i+i2+i3+208];
+			cor_h[i3+2][4] += (int32_t)buf[i+i2+i3+238];
 		}
-		cor_h[i3+2] = cor_h[i3+2] - buf[i+25+238];
-		printf("%d\n",cor_h[0]-cor_l[0]);
-		if (i3==-1 && (cor_h[0]-cor_l[0])>(cor_h[1]-cor_l[1])) {return 0;}
-		if (i3==0  && (cor_h[1]-cor_l[1])>(cor_h[2]-cor_l[2])) {return 0;}
-		if (i3==1  && (cor_h[2]-cor_l[2])<(cor_h[3]-cor_l[3])) {return 0;}
-		if (i3==2  && (cor_h[3]-cor_l[3])<(cor_h[4]-cor_l[4])) {return 0;}
-	}
+		cor_h[i3+2][4] = cor_h[i3+2][4] - (int32_t)buf[i+25+238];
 
-	p_high = cor_h[2] / 233;
-	p_low = cor_l[2] / 233;
-	printf("\ncor_h=%d cor_l=%d h+l=%d\n",cor_h[2],cor_l[2],cor_h[2]-cor_l[2]);
+		for (i2=26; i2<30; i2++) {
+			cor_n[i3+2] += (int32_t)buf[i+i2];
+			cor_n[i3+2] += (int32_t)buf[i+i2+30];
+			cor_n[i3+2] += (int32_t)buf[i+i2+60];
+			cor_n[i3+2] += (int32_t)buf[i+i2+89];
+			cor_n[i3+2] += (int32_t)buf[i+i2+119];
+			cor_n[i3+2] += (int32_t)buf[i+i2+149];
+			cor_n[i3+2] += (int32_t)buf[i+i2+178];
+			cor_n[i3+2] += (int32_t)buf[i+i2+208];
+			cor_n[i3+2] += (int32_t)buf[i+i2+237];
+		}
+		cor_n[i3+2] -= (int32_t)buf[i+89];
+		cor_n[i3+2] -= (int32_t)buf[i+178];
+
+		if (i3==-1 && (cor_n[0] > cor_n[1])) {return 0;}
+		if (i3==0  && (cor_n[1] > cor_n[2])) {return 0;}
+		if (i3==1  && (cor_n[2] < cor_n[3])) {return 0;}
+		if (i3==2  && (cor_n[3] < cor_n[4])) {return 0;}
+
+		cor_hs[i3+2] = cor_h[i3+2][0]+cor_h[i3+2][1]+cor_h[i3+2][2]+cor_h[i3+2][3]+cor_h[i3+2][4];
+		cor_ls[i3+2] = cor_l[i3+2][0]+cor_l[i3+2][1]+cor_l[i3+2][2]+cor_l[i3+2][3];
+
+	}
+	if (cor_h[2][0] < cor_l[2][0]) {printf("1");return 0;}
+	if (cor_h[2][1] < cor_l[2][1]) {printf("2");return 0;}
+	if (cor_h[2][2] < cor_l[2][2]) {printf("3");return 0;}
+	if (cor_h[2][3] < cor_l[2][3]) {printf("4");return 0;}
+	//if (cor_h[2][1] < cor_l[2][0]) {printf("5");return 0;}
+	//if (cor_h[2][2] < cor_l[2][1]) {printf("6");return 0;}
+	//if (cor_h[2][3] < cor_l[2][2]) {printf("7");return 0;}
+	//if (cor_h[2][4] < cor_l[2][3]) {printf("8");return 0;}
+	printf("\n");
+
+	p_high = (uint16_t)(cor_hs[2] / 129);
+	p_low = (uint16_t)(cor_ls[2] / 104);
+
+	for (i2=0; i2<263; i2++) {
+		printf("%d,",buf[i+i2]);
+	}
+	printf("\ncor_h=%d cor_l=%d h+l=%d\n",cor_hs[2],cor_ls[2],cor_hs[2]-cor_ls[2]);
 	printf("detect preamble at i=%d %d:%d\n",i,p_high,p_low);
 	return 1;
 }
