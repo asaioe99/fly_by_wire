@@ -276,22 +276,38 @@ static inline int preamble(uint16_t *buf, int i)
 	}
 	cor_h[4] = cor_h[4] - (int32_t)buf[i+25+238];
 
-
+	
 	if (cor_h[0] < cor_l[0]) {printf("1");return 0;}
 	if (cor_h[1] < cor_l[1]) {printf("2");return 0;}
 	if (cor_h[2] < cor_l[2]) {printf("3");return 0;}
 	if (cor_h[3] < cor_l[3]) {printf("4");return 0;}
+
 	if (cor_h[1] < cor_l[0]) {printf("5");return 0;}
 	if (cor_h[2] < cor_l[1]) {printf("6");return 0;}
 	if (cor_h[3] < cor_l[2]) {printf("7");return 0;}
 	if (cor_h[4] < cor_l[3]) {printf("8");return 0;}
+
+	if (cor_h[2] < cor_l[0]) {printf("9");return 0;}
+	if (cor_h[3] < cor_l[1]) {printf("A");return 0;}
+	if (cor_h[4] < cor_l[2]) {printf("B");return 0;}
+
+	if (cor_h[3] < cor_l[0]) {printf("C");return 0;}
+	if (cor_h[4] < cor_l[1]) {printf("D");return 0;}
+
+	if (cor_h[4] < cor_l[0]) {printf("E");return 0;}
+
 	printf("\n");
 
 	p_high = (uint16_t)((cor_h[0]+cor_h[1]+cor_h[2]+cor_h[3]+cor_h[4]) / 129);
 	p_low = (uint16_t)((cor_l[0]+cor_l[1]+cor_l[2]+cor_l[3]) / 104);
 
-	for (i2=0; i2<386; i2++) {
+	for (i2=0; i2<386*2; i2++) {
 		printf("%d,",buf[i+i2]);
+		/*printf("%3d:",i2);
+		for (i3=0;i3<(buf[i+i2]>>7);i3++) {
+			printf("*");
+		}
+		printf("\n");*/
 	}
 	printf("\ndetect preamble at i=%d %d:%d\n",i,p_high,p_low);
 	return 1;
