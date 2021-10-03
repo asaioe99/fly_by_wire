@@ -227,35 +227,41 @@ static inline int preamble(uint16_t *buf, int i)
 	int i2, i3;
 	p_high = 0;
 	p_low  = 0;
-	int32_t cor_n[7]  = {0,0,0,0,0,0,0};
+	int32_t cor_n[31]  = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	int32_t cor_h[5] =  {0,0,0,0,0};
 	int32_t cor_l[4] =  {0,0,0,0};
 
-	for (i3=-3;i3<4;i3++) {
+	for (i3=-15;i3<16;i3++) {
 		for (i2=26; i2<30; i2++) {
-			cor_n[i3+3] += (int32_t)buf[i+i2];
-			cor_n[i3+3] += (int32_t)buf[i+i2+30];
-			cor_n[i3+3] += (int32_t)buf[i+i2+60];
-			cor_n[i3+3] += (int32_t)buf[i+i2+89];
-			cor_n[i3+3] += (int32_t)buf[i+i2+119];
-			cor_n[i3+3] += (int32_t)buf[i+i2+149];
-			cor_n[i3+3] += (int32_t)buf[i+i2+178];
-			cor_n[i3+3] += (int32_t)buf[i+i2+208];
-			cor_n[i3+3] += (int32_t)buf[i+i2+237];
-			cor_n[i3+3] += (int32_t)buf[i+i2+267];
-			cor_n[i3+3] += (int32_t)buf[i+i2+297];
-			cor_n[i3+3] += (int32_t)buf[i+i2+326];
-			cor_n[i3+3] += (int32_t)buf[i+i2+356];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+30];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+60];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+89];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+119];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+149];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+178];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+208];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+237];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+267];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+297];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+326];
+			cor_n[i3+15] += (int32_t)buf[i+i2+i3+356];
 		}
-		cor_n[i3+3] -= (int32_t)buf[i+89];
-		cor_n[i3+3] -= (int32_t)buf[i+178];
-		cor_n[i3+3] -= (int32_t)buf[i+326];
+		cor_n[i3+15] -= (int32_t)buf[i+i3+89];
+		cor_n[i3+15] -= (int32_t)buf[i+i3+178];
+		cor_n[i3+15] -= (int32_t)buf[i+i3+326];
 
-		if (i3==-1 && (cor_n[0] > cor_n[2])) {return 0;}
-		if (i3==0  && (cor_n[1] > cor_n[3])) {return 0;}
-		if (i3==2  && (cor_n[5] < cor_n[3])) {return 0;}
-		if (i3==3  && (cor_n[4] < cor_n[6])) {return 0;}
+		//if (i3==0 && (cor_n[0] > cor_n[15])) {return 0;}
+		//if (i3==1 && (cor_n[0] > cor_n[15])) {return 0;}
+		//if (i3==3 && (cor_n[5] < cor_n[8])) {return 0;}
+		//if (i3==5 && (cor_n[5] < cor_n[10])) {return 0;}
 
+	}
+	for (i2=0;i2<15;i2++) {
+		if (cor_n[15] < cor_n[i2]) {return 0;}
+	}
+	for (i2=16;i2<31;i2++) {
+		if (cor_n[15] < cor_n[i2]) {return 0;}
 	}
 	for (i2=0; i2<26; i2++) {
 		cor_h[0] += (int32_t)buf[i+i2];
@@ -271,14 +277,14 @@ static inline int preamble(uint16_t *buf, int i)
 	cor_h[4] = cor_h[4] - (int32_t)buf[i+25+238];
 
 
-	//if (cor_h[0] < cor_l[0]) {printf("1");return 0;}
-	//if (cor_h[1] < cor_l[1]) {printf("2");return 0;}
-	//if (cor_h[2] < cor_l[2]) {printf("3");return 0;}
-	//if (cor_h[3] < cor_l[3]) {printf("4");return 0;}
-	//if (cor_h[1] < cor_l[0]) {printf("5");return 0;}
-	//if (cor_h[2] < cor_l[1]) {printf("6");return 0;}
-	//if (cor_h[3] < cor_l[2]) {printf("7");return 0;}
-	//if (cor_h[4] < cor_l[3]) {printf("8");return 0;}
+	if (cor_h[0] < cor_l[0]) {printf("1");return 0;}
+	if (cor_h[1] < cor_l[1]) {printf("2");return 0;}
+	if (cor_h[2] < cor_l[2]) {printf("3");return 0;}
+	if (cor_h[3] < cor_l[3]) {printf("4");return 0;}
+	if (cor_h[1] < cor_l[0]) {printf("5");return 0;}
+	if (cor_h[2] < cor_l[1]) {printf("6");return 0;}
+	if (cor_h[3] < cor_l[2]) {printf("7");return 0;}
+	if (cor_h[4] < cor_l[3]) {printf("8");return 0;}
 	printf("\n");
 
 	p_high = (uint16_t)((cor_h[0]+cor_h[1]+cor_h[2]+cor_h[3]+cor_h[4]) / 129);
