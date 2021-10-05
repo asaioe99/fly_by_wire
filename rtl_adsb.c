@@ -250,7 +250,6 @@ static inline int preamble(uint16_t *buf, int i)
 		cor_n[i3+15] -= (int32_t)buf[i+i3+89];
 		cor_n[i3+15] -= (int32_t)buf[i+i3+178];
 		cor_n[i3+15] -= (int32_t)buf[i+i3+326];
-
 	}
 	for (i2=0;i2<15;i2++) {
 		if (cor_n[15] < cor_n[i2]) {return 0;}
@@ -271,24 +270,11 @@ static inline int preamble(uint16_t *buf, int i)
 	}
 	cor_h[4] = cor_h[4] - (int32_t)buf[i+25+238];
 
-	if (cor_h[0] < cor_l[0]) {printf("1");return 0;}
-	if (cor_h[1] < cor_l[1]) {printf("2");return 0;}
-	if (cor_h[2] < cor_l[2]) {printf("3");return 0;}
-	if (cor_h[3] < cor_l[3]) {printf("4");return 0;}
-
-	if (cor_h[1] < cor_l[0]) {printf("5");return 0;}
-	if (cor_h[2] < cor_l[1]) {printf("6");return 0;}
-	if (cor_h[3] < cor_l[2]) {printf("7");return 0;}
-	if (cor_h[4] < cor_l[3]) {printf("8");return 0;}
-
-	if (cor_h[2] < cor_l[0]) {printf("9");return 0;}
-	if (cor_h[3] < cor_l[1]) {printf("A");return 0;}
-	if (cor_h[4] < cor_l[2]) {printf("B");return 0;}
-
-	if (cor_h[3] < cor_l[0]) {printf("C");return 0;}
-	if (cor_h[4] < cor_l[1]) {printf("D");return 0;}
-
-	if (cor_h[4] < cor_l[0]) {printf("E");return 0;}
+	for (i2=0;i2<5;i2++) {
+		for (i3=0;i3<4;i3++) {
+			if (cor_h[i2] < cor_l[i3]) {return 0;}
+		}
+	}
 
 	printf("\n");
 
@@ -320,21 +306,20 @@ int manchester(uint16_t *buf, int len)
 	/* a and b hold old values to verify local manchester */
 	int i, i2, i3, i4, line, offset;
 	uint16_t end = 1;//temp
-	int n_begin = 1;
 	uint16_t ave;
 	int maximum_i = len - 1;        // len-1 since we look at i and i+1
-	// todo, allow wrap across buffers
 	i = 0;
 	while (i < maximum_i) {
 		/* find preamble */
 		for ( ; i < (len - preamble_len); i++) {
+START:
 			if (!preamble(buf, i)) {
 				continue;}
 			i3 = 0;
 			offset = i;
 			for ( ; i<(len - preamble_len); ) {
 				if (dec_p[i-offset].f == 1) {
-					for (i2=23;i2<28;i2++) {
+					for (i2=25;i2<28;i2++) {
 						if (dec_p[i+i2-offset].f==0) {
 							end = i2;
 							for(i4=2;i4<6;i4++) {
@@ -351,27 +336,37 @@ int manchester(uint16_t *buf, int len)
 						//printf("%d,",buf[i+i2]);
 					}
 					//printf("\n");
-
 					i += end;
 					line = (p_high >> 1) + (p_low >> 1);
-					//printf("%d ",line);
-					if (i3 < 1125) {
-						binary[i3] = ave > line ? 1 : 0;
-						printf("%4d %d,",i3,binary[i3]);
+					//printf
+					if (i3 < 1080) {
+						if (ave > line) {
+							binary[i3] = 1;
+							if (ave > p_high) {
+								p_high += ((ave-p_high) >> 8);
+							} else {
+								p_high -= ((p_high-ave) >> 8);
+							}
+						} else {
+							binary[i3] = 0;
+							if (ave > p_low) {
+								p_low += ((ave-p_low) >> 8);
+							} else {
+								p_low -= ((p_low-ave) >> 8);
+							}
+						}
+						printf("%4d %d ",i3,binary[i3]);
 						//printf("ave > line: %4d > %4d : end=%d i=%d\n",ave,line,end,i);
 						i3++;
+					} else {
+						//goto START;
 					}
 				} else {
 					i++;
 				}
 			}
 		}
-		/* mark bits until encoding breaks */
-		//for ( ; i < maximum_i; i++) {
-		//	buf[i] = bit_read(p_high, p_low, buf[i]);
-		//}
 	}
-
 	return i3 - 1;
 }
 
@@ -379,7 +374,6 @@ void messages(uint16_t *buf, int len)
 {
 	int i, data_i, index;
 	// todo, allow wrap across buffers
-
 	data_i = 0;
 	index = 0;
 	for (i=0; i<len; i++) {
