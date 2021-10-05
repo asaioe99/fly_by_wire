@@ -251,11 +251,6 @@ static inline int preamble(uint16_t *buf, int i)
 		cor_n[i3+15] -= (int32_t)buf[i+i3+178];
 		cor_n[i3+15] -= (int32_t)buf[i+i3+326];
 
-		//if (i3==0 && (cor_n[0] > cor_n[15])) {return 0;}
-		//if (i3==1 && (cor_n[0] > cor_n[15])) {return 0;}
-		//if (i3==3 && (cor_n[5] < cor_n[8])) {return 0;}
-		//if (i3==5 && (cor_n[5] < cor_n[10])) {return 0;}
-
 	}
 	for (i2=0;i2<15;i2++) {
 		if (cor_n[15] < cor_n[i2]) {return 0;}
@@ -276,7 +271,6 @@ static inline int preamble(uint16_t *buf, int i)
 	}
 	cor_h[4] = cor_h[4] - (int32_t)buf[i+25+238];
 
-	
 	if (cor_h[0] < cor_l[0]) {printf("1");return 0;}
 	if (cor_h[1] < cor_l[1]) {printf("2");return 0;}
 	if (cor_h[2] < cor_l[2]) {printf("3");return 0;}
@@ -298,8 +292,14 @@ static inline int preamble(uint16_t *buf, int i)
 
 	printf("\n");
 
-	p_high = (uint16_t)((cor_h[0]+cor_h[1]+cor_h[2]+cor_h[3]+cor_h[4]) / 129);
-	p_low = (uint16_t)((cor_l[0]+cor_l[1]+cor_l[2]+cor_l[3]) / 104);
+	for (i2=0;i2<4;i2++) {
+		cor_h[i2] /= 26;
+		cor_l[i2] /= 26;
+	}
+	cor_h[4] /= 25;
+
+	p_high = (uint16_t)((cor_h[0]+cor_h[1]+cor_h[2]+cor_h[3]+cor_h[4]) / 5);
+	p_low = (uint16_t)((cor_l[0]+cor_l[1]+cor_l[2]+cor_l[3]) / 4);
 
 	for (i2=0; i2<386*2; i2++) {
 		printf("%d,",buf[i+i2]);
@@ -309,7 +309,8 @@ static inline int preamble(uint16_t *buf, int i)
 		}
 		printf("\n");*/
 	}
-	printf("\ndetect preamble at i=%d %d:%d\n",i,p_high,p_low);
+	printf("\ndetect preamble at i=%d %d:%d ave=%d\n",i,p_high,p_low,(p_high >> 1)+(p_low >> 1));
+	printf("1:%d 0:%d 1:%d 0:%d 1:%d 0:%d 1:%d 0:%d 1:%d\n",cor_h[0],cor_l[0],cor_h[1],cor_l[1],cor_h[2],cor_l[2],cor_h[3],cor_l[3],cor_h[4]);
 	return 1;
 }
 
@@ -317,41 +318,47 @@ int manchester(uint16_t *buf, int len)
 /* overwrites magnitude buffer with valid bits (BADSAMPLE on errors) */
 {
 	/* a and b hold old values to verify local manchester */
-	int i, i2, i3, i4, line;
-	int end = 1;//temp
+	int i, i2, i3, i4, line, offset;
+	uint16_t end = 1;//temp
 	int n_begin = 1;
-	int ave;
+	uint16_t ave;
 	int maximum_i = len - 1;        // len-1 since we look at i and i+1
 	// todo, allow wrap across buffers
-	i = 2;
+	i = 0;
 	while (i < maximum_i) {
 		/* find preamble */
 		for ( ; i < (len - preamble_len); i++) {
 			if (!preamble(buf, i)) {
 				continue;}
 			i3 = 0;
+			offset = i;
 			for ( ; i<(len - preamble_len); ) {
-				if (dec_p[i].f == 1) {
+				if (dec_p[i-offset].f == 1) {
 					for (i2=23;i2<28;i2++) {
-						if (dec_p[i+i2].f==0) {
+						if (dec_p[i+i2-offset].f==0) {
 							end = i2;
 							for(i4=2;i4<6;i4++) {
-								if (dec_p[i+i2+i4].f==1) {
+								if (dec_p[i+i2+i4-offset].f==1) {
 									end = end + i4;
+									break;
 								}
 							}
 						}
 					}
 					ave = 0;
-					for (i2=0;i2<end;i2++) {
-						ave = ave + buf[i+i2];
+					for (i2=0;i2<end-4;i2++) {
+						ave += (buf[i+i2] / (end-4));
+						//printf("%d,",buf[i+i2]);
 					}
-					ave = ave / end;
-					i = i + end;
+					//printf("\n");
+
+					i += end;
 					line = (p_high >> 1) + (p_low >> 1);
+					//printf("%d ",line);
 					if (i3 < 1125) {
 						binary[i3] = ave > line ? 1 : 0;
 						printf("%4d %d,",i3,binary[i3]);
+						//printf("ave > line: %4d > %4d : end=%d i=%d\n",ave,line,end,i);
 						i3++;
 					}
 				} else {
