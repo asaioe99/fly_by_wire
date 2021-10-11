@@ -3,13 +3,13 @@ fly by wireプロトコル仕様
 
 (1) 概説
 　・画像１枚を１画像単位として、最大4096枚の画像単位を送信する。
-　・各１画像単位は、preamble＋reserved＋size＋numbering＋datum（data * ~44）の領域で構成されている。
+　・各１画像単位は、preamble＋reserved＋size＋numbering＋data（datum * ~44）の領域で構成されている。
 　・preambleは9bitの領域であり、同期検出及び１画像単位の開始を表す標識である。
 　・reservedは4bitの領域であり、将来拡張するための領域で、全て0で埋める。
 　・sizeは18bitの領域であり、送信するデータサイズ（Byte）を２進数で表示する。
 　・numberingは23bitの領域であり、後述のdataと同様の仕様で最大12bit=4096までの画像単位に関する一連番号を表示する。
-　・datumは23bitのdataを１個単位として、最大で44個のdataにより構成される領域である。
-　・dataは、12bitのpayloadと11bitのerror correct codeにより構成される。
+　・dataは23bitのdatumを１個単位として、最大で44個のdatumにより構成される領域である。
+　・datumは、12bitのpayloadと11bitのerror correct codeにより構成される。
 　・payloadは任意のbitパターンとすることができる。
 　・error correct codeは、payloadのbitパターンに応じて決まる（詳細は後述）。
 
@@ -32,14 +32,14 @@ fly by wireの最大データ量は247,808Byteであるため、18bit=262,144>24
 
 /--numbering--/ total 23bit
 32-------->54
-何枚目の画像単位であるかの標識。拡張ゴレイ符号23bitで構成され、datum領域を構成するdataと同じ仕様となる。
+何枚目の画像単位であるかの標識。拡張ゴレイ符号23bitで構成され、data領域を構成するdatumと同じ仕様となる。
 従って、実際には12bitがnumberingとして使用できる。
 つまり、4096枚の画像単位の並び順を表現している。
 
-/--datum--/
+/--data--/
 55------> 55 + 23 * n(n=1,2,3,,,,44)
-datum領域は、23bitのdataが最大で44個連結される。
-各dataはpayload 12bit及びerrpr correct code 11bitで構成される。
+data領域は、23bitのdataが最大で44個連結される。
+各datumはpayload 12bit及びerrpr correct code 11bitで構成される。
 
 /--payload--/
 0------------------->11
@@ -157,9 +157,9 @@ C=A XOR B =01100011101
 
 numberingの受信及び復号について、一連番号に欠落が生じた場合、以降の受信は行わない。
 
-・datum領域の受信
+・data領域の受信
 　sizeより計算されるデータの終端部まで、受信を継続する。
-　各dataについての誤り訂正はnumberingと同様である。
+　各datumについての誤り訂正はnumberingと同様である。
 
 (5) 諸元
 　・最大データ送信量：247,808Byte = 1,982,464bit = 242KByte
