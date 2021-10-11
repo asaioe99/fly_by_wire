@@ -3,7 +3,7 @@ fly by wireプロトコル仕様
 
 (1) 概説
 　・画像１枚を１画像単位として、最大2048枚の画像単位を送信する。
-　・各１画像単位は、preamble＋reserved+size＋numbering＋datum*23の領域で構成されている。
+　・各１画像単位は、preamble＋reserved＋size＋numbering＋datum（data * ~44）の領域で構成されている。
 　・preambleは9bitの領域であり、同期検出及び１画像単位の開始を表す標識である。
 　・reservedは4bitの領域であり、将来拡張するための領域で、全て0で埋める。
 　・sizeは18bitの領域であり、送信するデータサイズ（Byte）を２進数で表示する。
