@@ -1,5 +1,5 @@
 fly by wireプロトコル仕様
-2021.10.11
+2021.10.17
 
 (1) 概説
 　・画像１枚を１画像単位として、最大4096枚の画像単位を送信する。
@@ -12,6 +12,12 @@ fly by wireプロトコル仕様
 　・datumは、12bitのpayloadと11bitのerror correct codeにより構成される。
 　・payloadは任意のbitパターンとすることができる。
 　・error correct codeは、payloadのbitパターンに応じて決まる（詳細は後述）。
+
+全体図
+|preamble:9bit|reserved:4bit|size:18bit|numbering:23bit |data:23*n(n=1~44)......................................................| 
+|=101010101   |=0000        |          |                |datum[0]:23bit  |datum[1]:23bit  |datum[2]:23bit  |...|datum[43]:23bit |
+                                       |payload|+| ecc  |payload|+| ecc  |payload|+| ecc  |payload|+| ecc  |...|payload|+| ecc  |
+                                       |=12bit |+|=11bit|=12bit |+|=11bit|=12bit |+|=11bit|=12bit |+|=11bit|...|=12bit |+|=11bit|
 
 (2) 各領域の詳細
 
@@ -123,9 +129,9 @@ A XOR B = C
 
 C:
            :訂正箇所
-           :0 1 2 3 4 5 6 7 8 910 
-00000000000:0 0 0 0 0 0 0 0 0 0 0
-01100011101:0 1 0 0 0 0 0 0 0 0 0
+           :0  1  2  3  4  5  6  7  8  9 10 
+00000000000:0  0  0  0  0  0  0  0  0  0  0
+01100011101:0  1  0  0  0  0  0  0  0  0  0
 
 以下追記予定
 
