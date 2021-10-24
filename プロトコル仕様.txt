@@ -1,63 +1,70 @@
 fly by wireプロトコル仕様
-2021.10.17
+2021.10.24
 
 (1) 概説
 　・画像１枚を１画像単位として、最大4096枚の画像単位を送信する。
 　・1bitの表現は、画像（1920*1080pixel）の水平線1920pixel全てのRGB値に対応し、bit=1であればRGB=(255,255,255)となり、bit=0はRGB=(0,0,0)となる。
-　・各１画像単位は、preamble＋reserved＋size＋numbering＋data（datum * ~44）の領域で構成されている。
+　・各１画像単位は、preamble＋reserved＋size＋numbering＋data（datum * ~42）の領域で構成されている。
 　・preambleは9bitの領域であり、同期検出及び１画像単位の開始を表す標識である。
-　・reservedは4bitの領域であり、将来拡張するための領域で、全て0で埋める。
-　・sizeは18bitの領域であり、送信するデータサイズ（Byte）を２進数で表示する。
-　・numberingは23bitの領域であり、後述のdatumと同様の仕様で最大12bit=4096までの画像単位に関する一連番号を表示する。
-　・dataは23bitのdatumを１個単位として、最大で44個のdatumにより構成される領域である。
-　・datumは、12bitのpayloadと11bitのerror correct codeにより構成される。
+　・reservedは21bitの領域であり、将来拡張するための領域で、000011110000111100001で埋める。
+　・sizeは18bitの領域であり、送信するデータの合計画像単位数と最後に送信される画像単位中のデータ終端までのdatumの数を含む（詳細は後述）。
+　・numberingは234itの領域であり、後述のdatumと同様の仕様で最大12bit=4096までの画像単位に関する一連番号を表示する。
+　・dataは24bitのdatumを１個単位として、最大で42個のdatumにより構成される領域である。
+　・datumは、12bitのpayloadと11bitのerror correction code(ecc)、1bitのbalanceにより構成される。
 　・payloadは任意のbitパターンとすることができる。
-　・error correct codeは、payloadのbitパターンに応じて決まる（詳細は後述）。
+　・error correction codeは、payloadのbitパターンに応じて決まる（詳細は後述）。
+　・balanceは、直前のpayload及びeccに出現する計23bitの1と0の出現数を比較し、少ないものを挿入する。
 
 全体図
-|preamble:9bit|reserved:4bit|size:18bit|numbering:23bit |data:23*n(n=1~44)......................................................| 
-|=101010101   |=0000        |          |                |datum[0]:23bit  |datum[1]:23bit  |datum[2]:23bit  |...|datum[43]:23bit |
-                                       |payload|+| ecc  |payload|+| ecc  |payload|+| ecc  |payload|+| ecc  |...|payload|+| ecc  |
-                                       |=12bit |+|=11bit|=12bit |+|=11bit|=12bit |+|=11bit|=12bit |+|=11bit|...|=12bit |+|=11bit|
-| <----------------------------------------------------- 1080 bit (pixel) ----------------------------------------------------> |
+   |preamble:9bit|reserved:21bit|size:18bit|numbering:24bit--------|data:23*n(n=1~42)----------------------------------------------------------------------------------| 
+   |=101010101   |=00001111...01|          |                       |datum[0]:24bit         |datum[1]:24bit         |datum[2]:24bit         |...|datum[41]:24bit        |
+   |                                       |payload|+|ecc|+|balance|payload|+|ecc|+|balance|payload|+|ecc|+|balance|payload|+|ecc|+|balance|...|payload|+|ecc|+|balance|
+bit|                                       |  12   |+|11 |+|   1   |  12   |+|11 |+|   1   |  12   |+|11 |+|   1   |  12   |+|11 |+|   1   |...|  12   |+|11 |+|   1   |
+   | <----------------------------------------------------------------------- 1080 bit (pixel) ----------------------------------------------------------------------> |
 
 (2) 各領域の詳細
 
 /--preamble--/ total 9bit
-0------>8
+0 --> 8
 101010101
 bitパターン固定、同期検出＆が画像単位の信号開始地点の標識
 
-/--reserved--/ total 4 bit
-9--------->12
-0000
+/--reserved--/ total 21 bit
+9 --> 29
+000011110000111100001
 同期精度を向上するため、将来的に使用される可能性があるが、通常は0で埋める方が誤検出が少なくて良い。
 
 /--size--/ total 18 bit
-13------>31
+30 --> 47
 ここに送信データ量を２進数で表示する。
-fly by wireの最大データ量は247,808Byteであるため、18bit=262,144>247,808で十分である。
+fly by wireの最大データ量は258,048Byteであるため、18bit=262,144>258,048で十分である。
+※42*12*4096/8=258,048Byte
 
 /--numbering--/ total 23bit
-32-------->54
-何枚目の画像単位であるかの標識。拡張ゴレイ符号23bitで構成され、data領域を構成するdatumと同じ仕様となる。
+48 --> 70
+何枚目の画像単位であるかの標識。完全ゴレイ符号23bit及びbalance 1bitで構成され、data領域を構成するdatumと同じ仕様となる。
 従って、実際には12bitがnumberingとして使用できる。
 つまり、4096枚の画像単位の並び順を表現している。
 
 /--data--/
-55------> 55 + 23 * n(n=1,2,3,,,,44)
-data領域は、23bitのdataが最大で44個連結される。
-各datumはpayload 12bit及びerrpr correct code 11bitで構成される。
+70 --> 70 + 24 * n(n=1,2,3,,,,42)
+data領域は、24bitのdataが最大で42個連結される。
+各datumはpayload 12bit及びerrpr correctionn code 11bit、balance 1bitで構成される。
 
 /--payload--/
-0------------------->11
+0 --> 11
 任意のbitパターンを配置することができる。送信するデータ列は、ここに配置される。
 
-/--error correct code--/
-12-------------------->22
+/--error correctionn code--/
+12 --> 22
 payloadの12bitのbitパターンにより決定される誤り訂正用のbitパターンである。
 
-(3)error correct codeの計算方法
+/--balance--/
+23 --> 23
+直前のpayloadの12bit、及びeccの11bitのパターンにより決定される信号の電圧バランス調整用のbitパターンである。
+payloadとeccに出現した1及び0について、出現数が少ない方をbalanceに挿入する。
+
+(3)error correction codeの計算方法
 payload 12bitに対して、先頭00から最後尾11までに、以下の11bitの符号を定義する。
 
 bit:
@@ -74,7 +81,7 @@ bit:
 10 :10010011111
 11 :10001110101
 
-各bitに対しこれが1であれば、対応する11bitの符号を全てXORし、これをerror correct code とする。
+各bitに対しこれが1であれば、対応する11bitの符号を全てXORし、これをerror correction code とする。
 
 例：
 payload:101010101010
@@ -108,7 +115,7 @@ error correct code:0100 1010 001 (= 11000111010 xor 11110110100 xor 00111101101 
 　データサイズは誤り訂正がないが、各画像単位に同一のデータサイズが送信されるため、正確な値を送信できる。
 
 ・numberingの受信
-　受信側は、numbering領域の先頭12bitに対して、error correct codeを計算し、この結果の11bitをAとする。
+　受信側は、numbering領域の先頭12bitに対して、error correction codeを計算し、この結果の11bitをAとする。
 　次に、numbering領域の後半11bitに対して、以下に示す計算により11bitのBを求める。
 
 numbering領域後半11bitについて、先頭から順に以下の11bitの符号を対応させる。
@@ -173,7 +180,7 @@ numberingの受信及び復号について、一連番号に欠落が生じた�
 　各datumについての誤り訂正はnumberingと同様である。
 
 (5) 諸元
-　・最大データ送信量：247,808Byte = 1,982,464bit = 242KByte
-　・通信速度：ディスプレイが1920*1080@60Hzである場合、3,630Byte/sec
+　・最大データ送信量：258,048Byte = 2,064,384bit = 252KByte
+　・通信速度：ディスプレイが1920*1080@60Hzである場合、3,780Byte/sec
 　・誤り訂正能力：最大で13.04%であり、data内の最大3bitを訂正可能
 
